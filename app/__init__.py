@@ -1,15 +1,19 @@
 from flask import Flask
 from flask_cors import CORS
 import os
-# from app.journals.routes import journal_bp  
 from app.config import Config
 from app.db import db, migrate, jwt, bcrypt
+
+from app.authentication.routes import auth_bp  # Import models to register them
 
 def create_app():
     app = Flask(__name__)
     # Allow routes without a trailing slash to be accepted without a redirect.
     app.url_map.strict_slashes = False
     app.config.from_object(Config)
+    
+    # Enable CORS
+    CORS(app)  # ADD THIS - you imported it but didn't use it
 
     # Initialize extensions
     db.init_app(app)
@@ -19,27 +23,12 @@ def create_app():
 
     
     # Register blueprints
-    # app.register_blueprint( )   
+    app.register_blueprint(auth_bp)  # FIXED: Now registering your auth blueprint
+    
 
+  
+    return app
 
-#     # Import models for migrations
-#     register_models()
-
-#     # Add routes
-#     # add_routes(app)
-
-#     return app
-
-
-# def register_models():
-#     #Import models for Flask-Migrate
-#     try:
-#         from app.auth import models as auth_models  
-#         from app.community import models as community_models
-#         from app.journals import models as journals_models  
-#         from app.mood import models as mood_models  
-#     except ImportError:
-#         pass
 
 #  tests routes for listing all routes
 def add_routes(app):
