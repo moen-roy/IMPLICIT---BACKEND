@@ -45,6 +45,8 @@ def register():
 
     db.session.add(user)
     db.session.flush()  # So we can get user.id before committing    
+    db.session.commit()  # Actually save to database
+
 
     return jsonify({
         'message': 'Registration successful',
@@ -66,7 +68,9 @@ def login():
     data = request.get_json()
 
     email = data.get('email')
+    account_type = data.get('account_type')
     password = data.get('password')
+
 
     if not email or not password:
         return jsonify({'message': 'Email and password are required'}), 400
@@ -74,20 +78,10 @@ def login():
     user = User.query.filter_by(email=email).first()
     if not user or not user.check_password(password):
         return jsonify({'message': 'Invalid email or password'}), 401
-
-    # Include therapist info if applicable
-    therapist_data = None
-    if user.role == 'therapist' and user.therapist_profile:
-        therapist = user.therapist_profile
-        therapist_data = {
-            'id': therapist.id,
-            'specialty': therapist.specialty,
-            'bio': therapist.bio,
-            'verified': therapist.verified
-        }
+  
 
     # Create a JWT access token that includes the user's role in claims.
-    access_token = create_access_token(identity=user.id, additional_claims={"role": user.role})
+    access_token = create_access_token(identity=user.id, additional_claims={"account_type": user.account_type})
 
     return jsonify({
         'message': 'Login successful',
@@ -96,8 +90,7 @@ def login():
             'id': user.id,
             'username': user.username,
             'email': user.email,
-            'role': user.role,
-            'therapist': therapist_data
+            'account_type': user.account_type
         }
     }), 200
 
@@ -107,25 +100,30 @@ def login():
 # =====================================
 @auth_bp.route('/forgot-password', methods=['POST'])
 def forgot_password():
-    data = request.get_json()
-    email = data.get('email')
+    try:
+        data = request.get_json()
+        email = data.get('email')
 
-    if not email:
-        return jsonify({'message': 'Email is required'}), 400
+        if not email:
+            return jsonify({'message': 'Email is required'}), 400
 
-    user = User.query.filter_by(email=email).first()
-    if not user:
-        return jsonify({'message': 'User not found'}), 404
+        user = User.query.filter_by(email=email).first()
+        if not user:
+            return jsonify({'message': 'User not found'}), 404
 
-    user.reset_token = secrets.token_urlsafe(32)
-    user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
-    db.session.commit()
+        user.reset_token = secrets.token_urlsafe(32)
+        user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+        db.session.commit()
 
-    # In production: email the reset token instead
-    return jsonify({
-        'message': 'Reset token generated successfully',
-        'reset_token': user.reset_token
-    }), 200
+        # In production: email the reset token instead
+        return jsonify({
+            'message': 'Reset token generated successfully',
+            'reset_token': user.reset_token
+        }), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Failed to generate reset token: {str(e)}'}), 500
 
 
 # =====================================
@@ -133,30 +131,35 @@ def forgot_password():
 # =====================================
 @auth_bp.route('/reset-password', methods=['POST'])
 def reset_password():
-    data = request.get_json()
-    token = data.get('token')
-    password = data.get('password')
-    confirm_password = data.get('confirm_password')
+    try:
+        data = request.get_json()
+        token = data.get('token')
+        password = str(data.get('password'))
+        confirm_password = str(data.get('confirm_password'))
 
-    if not token or not password or not confirm_password:
-        return jsonify({'message': 'All fields are required'}), 400
+        if not token or not password or not confirm_password:
+            return jsonify({'message': 'All fields are required'}), 400
 
-    if password != confirm_password:
-        return jsonify({'message': 'Passwords do not match'}), 400
+        if password != confirm_password:
+            return jsonify({'message': 'Passwords do not match'}), 400
 
-    user = User.query.filter_by(reset_token=token).first()
-    if not user:
-        return jsonify({'message': 'Invalid token'}), 400
+        user = User.query.filter_by(reset_token=token).first()
+        if not user:
+            return jsonify({'message': 'Invalid token'}), 400
 
-    if user.reset_token_expires < datetime.utcnow():
-        return jsonify({'message': 'Reset token has expired'}), 400
+        if user.reset_token_expires < datetime.utcnow():
+            return jsonify({'message': 'Reset token has expired'}), 400
 
-    user.set_password(password)
-    user.reset_token = None
-    user.reset_token_expires = None
-    db.session.commit()
+        user.set_password(password)
+        user.reset_token = None
+        user.reset_token_expires = None
+        db.session.commit()
 
-    return jsonify({'message': 'Password reset successful'}), 200
+        return jsonify({'message': 'Password reset successful'}), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'message': f'Password reset failed: {str(e)}'}), 500
 
 
 
