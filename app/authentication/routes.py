@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from app import limiter
 from app import db
 from app.authentication.model import User
 from datetime import datetime, timedelta
@@ -18,6 +19,8 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 # REGISTER (User)
 # =====================================
 @auth_bp.route('/register', methods=['POST'])
+@limiter.limit("5 per hour")  # Only 5 registrations per hour per IP
+
 def register():
     data = request.get_json()
 
@@ -64,6 +67,8 @@ def register():
 # LOGIN
 # =====================================
 @auth_bp.route('/login', methods=['POST'])
+@limiter.limit("5 per minute")  # Prevent brute force
+
 def login():
     data = request.get_json()
 

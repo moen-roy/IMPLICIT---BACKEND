@@ -1,6 +1,8 @@
 # app/config.py
 from dotenv import load_dotenv
 import os
+from datetime import timedelta
+
 
 load_dotenv()
 
@@ -14,4 +16,4 @@ class Config:
 
     # JWT settings
     JWT_ACCESS_TOKEN_EXPIRES = os.getenv('JWT_ACCESS_TOKEN_EXPIRES', 'False').lower() == 'true'
-    JWT_IDENTITY_CLAIM = os.getenv('JWT_IDENTITY_CLAIM')
+    JWT_REFRESH_TOKEN_EXPIRES = os.getenv('JWT_REFRESH_TOKEN_EXPIRES', 'False').lower() == 'true'

@@ -2,9 +2,10 @@ from flask import Flask
 from flask_cors import CORS
 import os
 from app.config import Config
-from app.db import db, migrate, jwt, bcrypt
+from app.db import db, migrate, jwt, bcrypt,limiter
 
 from app.authentication.routes import auth_bp  # Import models to register them
+
 
 def create_app():
     app = Flask(__name__)
@@ -26,7 +27,8 @@ def create_app():
     app.register_blueprint(auth_bp)  # FIXED: Now registering your auth blueprint
     
 
-  
+    limiter.init_app(app)
+
     return app
 
 
