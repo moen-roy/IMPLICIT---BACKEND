@@ -7,6 +7,7 @@ from app.db import db, migrate, jwt, bcrypt,limiter
 from app.authentication.routes import auth_bp  
 from app.category.routes import category_bp
 from app.system.routes import system_bp
+from app.quotation.routes import quotation_bp
 
 def create_app():
     app = Flask(__name__)
@@ -28,6 +29,7 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(category_bp)
     app.register_blueprint(system_bp)
+    app.register_blueprint(quotation_bp)
 
     limiter.init_app(app)
 

@@ -4,16 +4,16 @@ from datetime import datetime
 class Quote(db.Model):
     __tablename__ = 'quotes'
 
-    id = db.column(db.integer, primary_key= True)
-    client_name =db.column(db.String(80), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)
+    client_name = db.Column(db.String(80), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
-    items=db.column(nullable=False)
-    subtotal=db.column(db.Float, default=0)
-    tax_rate=db.column(db.Float, default=0)
+    items=db.Column(db.Text, nullable=False)
+    subtotal=db.Column(db.Float, default=0)
+    tax_rate=db.Column(db.Float, default=0)
     discount_amount = db.Column(db.Float, default=0)
-    tax_amount=db.column(db.Float, default=0)
-    shipping_cost=db.column(db.Float, default=0)
-    total=db.column(db.Float, default=0, nullable=False)
+    tax_amount=db.Column(db.Float, default=0)
+    shipping_cost=db.Column(db.Float, default=0)
+    total=db.Column(db.Float, default=0, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
