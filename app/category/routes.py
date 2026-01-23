@@ -1,9 +1,6 @@
 from flask import Blueprint, request, jsonify
-from app import limiter
 from app import db
-from app.authentication.model import User
 from datetime import datetime, timedelta
-import secrets
 from functools import wraps
 from app.category.model import GlassCategory
 from app.authentication.routes import owner_required
@@ -43,3 +40,14 @@ def create_category():
     db.session.commit()
     
     return jsonify({'message': 'Category created successfully', 'id': category.id}), 201
+
+
+@category_bp.route('/categories/<int:category_id>', methods=['DELETE'])
+@owner_required
+
+def delete_category(category_id):
+    category = GlassCategory.query.get_or_404(category_id)
+    category.is_active = False  # Soft delete
+    db.session.commit()
+    
+    return jsonify({'message': 'Category deleted'})

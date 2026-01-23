@@ -6,7 +6,7 @@ from app.db import db, migrate, jwt, bcrypt,limiter
 
 from app.authentication.routes import auth_bp  
 from app.category.routes import category_bp
-
+from app.system.routes import system_bp
 
 def create_app():
     app = Flask(__name__)
@@ -27,6 +27,7 @@ def create_app():
     # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(category_bp)
+    app.register_blueprint(system_bp)
 
     limiter.init_app(app)
 

@@ -1,6 +1,5 @@
-from app.db import db
 from datetime import datetime
-
+from app import db
 
 class GlassCategory(db.Model):
     __tablename__ = 'glass_categories'
