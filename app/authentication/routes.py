@@ -14,8 +14,21 @@ from flask_jwt_extended import (
     get_jwt_identity,
     get_jwt,
 )
+from functools import wraps
+
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
+
+def owner_required(f):
+    @wraps(f)
+    @jwt_required()
+    def decorated_function(*args, **kwargs):
+        user_id = get_jwt_identity()
+        user = User.query.get(user_id)
+        if not user or user.role != 'owner':
+            return jsonify({'error': 'Owner access required'}), 403
+        return f(*args, **kwargs)
+    return decorated_function
 
 
 # =====================================
