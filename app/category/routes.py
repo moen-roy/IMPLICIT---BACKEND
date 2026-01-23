@@ -41,6 +41,20 @@ def create_category():
     
     return jsonify({'message': 'Category created successfully', 'id': category.id}), 201
 
+@category_bp.route('/<int:category_id>', methods=['PUT'])
+@owner_required
+def update_category(category_id):
+    category = GlassCategory.query.get_or_404(category_id)
+    data = request.get_json()
+    
+    category.display_name = data.get('display_name', category.display_name)
+    category.price_per_sqm = data.get('price_per_sqm', category.price_per_sqm)
+    category.description = data.get('description', category.description)
+    
+    db.session.commit()
+    
+    return jsonify({'message': 'Category updated'})
+
 
 @category_bp.route('/categories/<int:category_id>', methods=['DELETE'])
 @owner_required

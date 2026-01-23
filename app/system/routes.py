@@ -46,7 +46,10 @@ def get_discounts():
 @owner_required
 def create_discount():
     data = request.get_json()
-    
+
+    if DiscountCode.query.filter_by(code=data['code'].upper()).first():
+        return jsonify({'error': 'Discount code already exists'}), 409
+        
     discount = DiscountCode(
         code=data['code'].upper(),
         discount_percent=data['discount_percent']
