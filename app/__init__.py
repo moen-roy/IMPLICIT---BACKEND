@@ -4,7 +4,8 @@ import os
 from app.config import Config
 from app.db import db, migrate, jwt, bcrypt,limiter
 
-from app.authentication.routes import auth_bp  # Import models to register them
+from app.authentication.routes import auth_bp  
+from app.category.routes import category_bp
 
 
 def create_app():
@@ -14,7 +15,7 @@ def create_app():
     app.config.from_object(Config)
     
     # Enable CORS
-    CORS(app)  # ADD THIS - you imported it but didn't use it
+    CORS(app)  
 
     # Initialize extensions
     db.init_app(app)
@@ -24,10 +25,13 @@ def create_app():
 
     
     # Register blueprints
-    app.register_blueprint(auth_bp)  # FIXED: Now registering your auth blueprint
-    
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(category_bp)
 
     limiter.init_app(app)
+
+    add_routes(app)
+
 
     return app
 
@@ -45,4 +49,4 @@ def add_routes(app):
                 }
                 for rule in app.url_map.iter_rules()
             ]
-        }, 200
+        }, 200  
