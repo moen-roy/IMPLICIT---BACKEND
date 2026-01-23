@@ -5,8 +5,11 @@ from app.authentication.model import User
 from datetime import datetime, timedelta
 import secrets
 from functools import wraps
+from app.utilis.validation import validate_email, validate_password, validate_phone, require_json
+from app.utilis.response import success_response, error_response
 from flask_jwt_extended import (
     create_access_token,
+     create_refresh_token,
     jwt_required,
     get_jwt_identity,
     get_jwt,
@@ -19,49 +22,79 @@ auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
 # REGISTER (User)
 # =====================================
 @auth_bp.route('/register', methods=['POST'])
-@limiter.limit("5 per hour")  # Only 5 registrations per hour per IP
+# @limiter.limit("5 per hour")  # Only 5 registrations per hour per IP
+@require_json
 
 def register():
-    data = request.get_json()
+    try:
+        data = request.get_json()
 
-    username = data.get('username')
-    email = data.get('email')
-    password = data.get('password')
-    account_type = data.get('account_type')
-    phone_number = data.get('phone_number')
+        # Extract data
+        username = data.get('username', '').strip()
+        email = data.get('email', '').strip().lower()
+        password = str(data.get('password', ''))
+        phone_number = data.get('phone_number', '').strip() if data.get('phone_number') else None
 
-    # Validation
-    if not username or not email or not password:
-        return jsonify({'message': 'Username, email, and password are required'}), 400
+        # Validate required fields
+        if not all([username, email, password]):
+            return error_response('Username, email, and password are required')
 
-    if User.query.filter((User.email == email) | (User.username == username)).first():
-        return jsonify({'message': 'Username or Email already exists'}), 400
+        # Validate email
+        if not validate_email(email):
+            return error_response('Invalid email format')
 
-    # Create base user
-    user = User(
-        username=username,
-        email=email,
-        phone_number=phone_number,
-        account_type=account_type
-    )
-    user.set_password(password)
+        # Validate password
+        is_valid, msg = validate_password(password)
+        if not is_valid:
+            return error_response(msg)
 
-    db.session.add(user)
-    db.session.flush()  # So we can get user.id before committing    
-    db.session.commit()  # Actually save to database
+        # Validate phone (if provided)
+        if phone_number and not validate_phone(phone_number):
+            return error_response('Invalid phone number format')
+        
+        if len(password) < 8:
+            return jsonify({
+                'success': False,
+                'message': 'Password must be at least 8 characters long'
+            }), 400
+
+        # Check duplicates
+        if User.query.filter((User.email == email) | (User.username == username)).first():
+            return error_response('Username or Email already exists')
+
+        # Create user
+        user = User(
+            username=username,
+            email=email,
+            phone_number=phone_number,
+        )
+        user.set_password(password)
+
+        db.session.add(user)
+        db.session.commit()
+
+        # Generate token
+        access_token = create_access_token(identity=user.id)
+        refresh_token = create_refresh_token(identity=user.id)
 
 
-    return jsonify({
-        'message': 'Registration successful',
-        'user': {
-            'id': user.id,
-            'username': user.username,
-            'email': user.email,
-            'account_type': user.account_type,
-            'created_at': user.created_at
-        }
-    }), 201
+        return success_response(
+            data={
+                'access_token': access_token,
+                'refresh_token': refresh_token,
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                }
+            },
+            message='Registration successful',
+            status=201
+        )
 
+    except Exception as e:
+        db.session.rollback()
+        return error_response(f'Registration failed: {str(e)}', status=500)
 
 # =====================================
 # LOGIN
@@ -73,7 +106,6 @@ def login():
     data = request.get_json()
 
     email = data.get('email')
-    account_type = data.get('account_type')
     password = data.get('password')
 
 
@@ -86,7 +118,7 @@ def login():
   
 
     # Create a JWT access token that includes the user's role in claims.
-    access_token = create_access_token(identity=user.id, additional_claims={"account_type": user.account_type})
+    access_token = create_access_token(identity=user.id)
 
     return jsonify({
         'message': 'Login successful',
@@ -95,8 +127,7 @@ def login():
             'id': user.id,
             'username': user.username,
             'email': user.email,
-            'account_type': user.account_type
-        }
+            }
     }), 200
 
 
