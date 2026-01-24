@@ -15,8 +15,12 @@ def create_app():
     app.url_map.strict_slashes = False
     app.config.from_object(Config)
     
-    # Enable CORS
-    CORS(app)  
+    # Enable CORS to handle preflight requests
+    CORS(app, 
+         origins=["http://localhost:5173"],
+         supports_credentials=True,
+         allow_headers=["Content-Type", "Authorization", "Access-Control-Allow-Credentials"],
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"])
 
     # Initialize extensions
     db.init_app(app)

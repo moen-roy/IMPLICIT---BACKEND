@@ -15,8 +15,12 @@ class User(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Relationship (one-to-one)
-    quotation_data = db.relationship("Quotation", backref="users", uselist=False, cascade="all, delete-orphan")
+    # Relationship (one-to-many)
+    categories = db.relationship('GlassCategory', backref='owner', lazy=True, cascade='all, delete-orphan')
+    discount_codes = db.relationship('DiscountCode', backref='owner', lazy=True, cascade='all, delete-orphan')
+    quotes = db.relationship('Quote', backref='creator', lazy=True, cascade='all, delete-orphan')
+    system_settings = db.relationship('SystemSettings', backref='owner', lazy=True, cascade='all, delete-orphan')
+    
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

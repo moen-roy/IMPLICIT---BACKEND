@@ -5,6 +5,7 @@ class Quote(db.Model):
     __tablename__ = 'quotes'
 
     id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)  # Who created it
     client_name = db.Column(db.String(80), nullable=False)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     items=db.Column(db.Text, nullable=False)

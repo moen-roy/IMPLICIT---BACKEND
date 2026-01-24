@@ -2,9 +2,11 @@ from flask import Blueprint, request, jsonify
 from app import limiter
 from app import db
 from app.authentication.model import User
+from app.system.model import SystemSettings
 from datetime import datetime, timedelta
 import secrets
 from functools import wraps
+from sqlalchemy.exc import IntegrityError
 from app.utilis.validation import validate_email, validate_password, validate_phone, require_json
 from app.utilis.response import success_response, error_response
 from flask_jwt_extended import (
@@ -14,7 +16,6 @@ from flask_jwt_extended import (
     get_jwt_identity,
     get_jwt,
 )
-from functools import wraps
 
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -80,10 +81,20 @@ def register():
             username=username,
             email=email,
             phone_number=phone_number,
+            role=data.get('role', 'cashier')
+
         )
         user.set_password(password)
 
         db.session.add(user)
+        db.session.flush()  
+        
+        # Create default system settings for new user
+        default_settings = [
+            SystemSettings(user_id=user.id, setting_key='shipping_cost', setting_value='50'),
+            SystemSettings(user_id=user.id, setting_key='default_tax_rate', setting_value='0')
+        ]
+        db.session.add_all(default_settings)
         db.session.commit()
 
         # Generate token
@@ -99,21 +110,22 @@ def register():
                     'id': user.id,
                     'username': user.username,
                     'email': user.email,
+                    'role': user.role
                 }
             },
             message='Registration successful',
             status=201
         )
 
-    except Exception as e:
+    except IntegrityError:
         db.session.rollback()
-        return error_response(f'Registration failed: {str(e)}', status=500)
+        return jsonify({'error': 'Registration failed'}), 400
 
 # =====================================
 # LOGIN
 # =====================================
 @auth_bp.route('/login', methods=['POST'])
-@limiter.limit("5 per minute")  # Prevent brute force
+@limiter.limit("3 per minute")  # Prevent brute force
 
 def login():
     data = request.get_json()
@@ -127,20 +139,24 @@ def login():
 
     user = User.query.filter_by(email=email).first()
     if not user or not user.check_password(password):
-        return jsonify({'message': 'Invalid email or password'}), 401
+        return jsonify({'message': 'Invalid credentials'}), 401
   
 
     # Create a JWT access token that includes the user's role in claims.
     access_token = create_access_token(identity=user.id)
+    refresh_token = create_refresh_token(identity=user.id)
+
 
     return jsonify({
         'message': 'Login successful',
         'access_token': access_token,
+        'refresh_token': refresh_token,
         'user': {
             'id': user.id,
             'username': user.username,
             'email': user.email,
-            }
+            'role': user.role
+        }
     }), 200
 
 
